@@ -1,0 +1,9 @@
+extends layout 
+
+block content
+  h1=title
+  form(method="POST", action="")
+    div.form-group
+      label(for="name") Name: 
+      input#name.form-control(type="text" placeholder="Food" name="name" required="true" value=(undefined===name ? "" : item.name))
+      

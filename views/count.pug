@@ -1,0 +1,11 @@
+extends layout 
+
+block content
+  if error
+    ul.item_list
+      p Error getting content
+  else 
+    h1 The database has record counts:
+    ul.item_list
+      li #[strong Items: ] !{data.item_count}
+      li #[strong Types: ] !{data.type_count}

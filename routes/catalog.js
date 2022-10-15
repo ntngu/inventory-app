@@ -27,4 +27,7 @@ router.post("/item/:id/delete", item_controller.item_delete_post);
 router.get("/item/:id/edit", item_controller.item_update_get);
 router.post("/item/:id/edit", item_controller.item_update_post);
 
+router.get("/type/:id/edit", type_controller.type_update_get);
+router.post("/type/:id/edit", type_controller.type_update_post);
+
 module.exports = router;

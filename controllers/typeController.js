@@ -2,6 +2,7 @@ const Type = require("../models/type");
 const Item = require("../models/item");
 const async = require("async");
 const { body, validationResult } = require("express-validator");
+const type = require("../models/type");
 
 exports.type_list = (req, res, next) => {
   Type.find()
@@ -137,3 +138,64 @@ exports.type_delete_post = (req, res, next) => {
     }
   );
 };
+
+exports.type_update_get = (req, res, next) => {
+  async.parallel(
+    {
+      type(callback) {
+        type.findById(req.params.id)
+          .populate("name")
+          .populate("description")
+          .exec(callback);
+      },
+    },
+    (err, result) => {
+      if (err) {
+        return next(err);
+      }
+
+      if (result.type === null) {
+        const err = new Error("Type not found.");
+        err.status = 404
+        return next(err);
+      }
+
+      res.render("type_form", {
+        title: "Update Type",
+        type: result.type,
+      });
+    },
+  );
+};
+
+exports.type_update_post = [
+  body("name", "Type name required").trim().isLength({ min: 1 }).escape(),
+  body("description", "Description required").trim().isLength({ min: 1 }).escape(),
+
+  (req, res, next) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      res.render("type_form", {
+        title: "Update Type",
+        type: req.body,
+        errors: errors.array,
+      })
+    }
+
+    const type = new Type({
+      _id: req.params.id,
+      name: req.body.name,
+      description: req.body.description,
+    });
+
+
+    Type.findByIdAndUpdate({_id: req.params.id}, type, {}, (err, thetype) => {
+      if (err) {
+        return next(err);
+      }
+
+      res.redirect(thetype.url);
+    });
+  }
+]

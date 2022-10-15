@@ -18,7 +18,7 @@ block content
         for type in types
           div(style="display: inline; padding-right: 10px;")
             input.checkbox-input(type="checkbox", name="type", id=type._id, value=type._id, checked=type.checked)
-            label(for=type._id) #{type.id}
+            label(for=type._id) &nbsp;#{type.name}
     button.btn.btn-primary(type="submit") Submit
   if errors
     ul

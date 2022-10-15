@@ -1,0 +1,17 @@
+extends layout
+
+block content
+  h1 #{type.name}
+  p #{type.description}
+
+  ul #[strong Items:]
+    each val, index in type_items
+      li
+        a(href=val.url) #{val.name}
+  p
+    hr
+    a(href=type.url+"/edit") Edit type
+    br
+    a(href=type.url+"/delete") Delete type
+
+        

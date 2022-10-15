@@ -1,6 +1,7 @@
 const Item = require("../models/item");
 const Type = require("../models/type");
 const async = require("async");
+const { body, validationResult } = require("express-validator");
 
 exports.index = (req, res) => {
   res.render("index", {
@@ -44,7 +45,7 @@ exports.item_detail = function(req, res, next) {
   async.parallel(
     {
       item(callback) {
-        Item.findById(req.params.id)
+        Item.findById({_id: req.params.id})
           .populate("name")
           .populate("type")
           .exec(callback);
@@ -60,8 +61,8 @@ exports.item_detail = function(req, res, next) {
         return next(err);
       }
       res.render("item_detail", {
-        name: results.item.name,
-        description: results.item.description,
+        item: results.item,
+        type: results.item.type,
       });
     }
   );
@@ -70,9 +71,6 @@ exports.item_detail = function(req, res, next) {
 exports.item_create_get = (req, res, next) => {
   async.parallel(
     {
-      items(callback) {
-        Item.find(callback);
-      },
       types(callback) {
         Type.find(callback);
       },
@@ -93,26 +91,230 @@ exports.item_create_get = (req, res, next) => {
 
 exports.item_create_post = [
   (req, res, next) => {
-    if (!Array.isArray(req.item.type)) {
-      req.body.type =
-        typeof req.body.type === undefined ? [] : [req.body.type];
+    if (!Array.isArray(req.body.type)) {
+      req.body.type = typeof req.body.type === undefined ? [] : [req.body.type];
     }
     next();
+  },
+  body("name", "Name must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("description", "Description must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("quantity", "Quantity must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("type.*").escape(),
+  (req, res, next) => {
+    const errors = validationResult(req);
+
+    const item = new Item({
+      name: req.body.name,
+      description: req.body.description,
+      quantity: req.body.quantity,
+      type: req.body.type,
+    });
+
+    if (!errors.isEmpty()) {
+      async.parallel(
+        {
+          items(callback) {
+            Item.find(callback);
+          },
+          types(callback) {
+            Type.find(callback);
+          },
+        },
+        (err, results) => {
+          for (const type of results.types) {
+            if (item.type.includes(type._id)) {
+              type.checked = "true";
+            }
+          }
+          res.render("item_form", {
+            title: "Create item",
+            items: results.items,
+            types: results.types, item,
+            errors: errors.array(),
+          });
+          console.log(errors.array());
+        }
+      );
+      return;
+    }
+    item.save((err) => {
+      if (err) {
+        return next(err);
+      }
+      res.redirect(item.url);
+    });
   },
 ];
 
 exports.item_delete_get = (req, res, next) => {
-  res.send("NOT IMPLEMENTED: Item delete GET");
-}
+  async.parallel(
+    {
+      item(callback) {
+        Item.findById(req.params.id).exec(callback);
+      }
+    },
+    (err, results) => {
+      if (err) {
+        return next(err);
+      }
+      if (results.item === null) {
+        res.redirect("/catalog/item");
+      }
+      res.render("item_delete", {
+        item: results.item,
+      });
+    },
+  );
+};
 
 exports.item_delete_post = (req, res, next) => {
-  res.send("NOT IMPLEMENTED: Item delete POST");
-}
+  async.parallel(
+    {
+      item(callback) {
+        Item.findById(req.body.itemid).exec(callback);
+      }
+    },
+    (err, results) => {
+      if (err) {
+        return next(err);
+      }
+
+      Item.findByIdAndRemove(req.body.itemid, (err) => {
+        if (err) {
+          return next(err);
+        }
+        res.redirect("/catalog/item");
+      });
+    }
+  )
+};
 
 exports.item_update_get = (req, res, next) => {
-  res.send("NOT IMPLEMENTED: Item update GET");
-}
+  async.parallel(
+    {
+      item(callback) {
+        Item.findById(req.params.id)
+          .populate("name")
+          .populate("description")
+          .populate("quantity")
+          .populate("type")
+          .exec(callback);
+      },
+      types(callback) {
+        Type.find(callback);
+      }
+    },
+    (err, result) => {
+      if (err) {
+        return next(err);
+      }
 
-exports.item_update_post = (req, res, next) => {
-  res.send("NOT IMPLEMENTED: Item update POST");
-}
+      if (result.item === null) {
+        const err = new Error("Item not found");
+        err.status = 404;
+        return next(err);
+      }
+
+      for (const type of result.types) {
+        for (const itemType of result.item.type) {
+          if (type._id.toString() === itemType._id.toString()) {
+            type.checked = "true";
+          }
+        }
+      }
+
+      res.render("item_form", {
+        title: "Update item",
+        item: result.item,
+        types: result.types
+      });
+    }
+  );
+};
+
+exports.item_update_post = [
+  (req, res, next) => {
+    if (!Array.isArray(req.body.type)) {
+      req.body.type = typeof req.body.type === "undefined" ? [] : req.body.type
+    }
+    next();
+  },
+  body("name", "Name must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("description", "Description must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("quantity", "Quantity must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("type.*").escape(),
+  (req, res, next) => {
+    const errors = validationResult(req);
+
+    const item = new Item({
+      _id: req.params.id,
+      name: req.body.name,
+      description: req.body.description,
+      quantity: req.body.quantity,
+      type: typeof req.body.type === undefined ? [] : req.body.type,
+    });
+     
+    if (!errors.isEmpty()) {
+      async.parallel(
+        {
+          items(callback) {
+            Item.find(callback);
+          },
+          types(callback) {
+            Type.find(callback);
+          },
+        },
+        (err, results) => {
+          if (err) {
+            return next(err);
+          }
+          for (const type of results.types) {
+            if (item.type.includes(type._id)) {
+              type.checked = "true";
+            }
+          }
+          res.render("item_form", {
+            title: "Update item",
+            item: results.item,
+            type: results.types,
+            errors: errors.array(),
+          });
+        }
+      );
+      return;
+    }
+    Item.findByIdAndUpdate({_id: req.params.id}, item, {}, (err, theitem) => {
+      if (err) {
+        return next(err);
+      }
+
+      res.redirect(theitem.url);
+    });
+  },
+];
+
+exports.item_search_get = (req, res, next) => {
+  res.send("NOT IMPLEMENTED: Item search GET");
+};
+
+exports.item_search_post = (req, res, next) => {
+  res.send("NOT IMPLEMENTED: Item search POST");
+};

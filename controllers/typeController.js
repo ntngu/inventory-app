@@ -17,14 +17,14 @@ exports.type_list = (req, res, next) => {
     });
 };
 
-exports.type_detail = (req, res) => {
+exports.type_detail = (req, res, next) => {
   async.parallel(
     {
       type(callback) {
-        Type.findById({ name: req.params.id }).exec(callback);
+        Type.findById({ _id: req.params.id }).exec(callback);
       },
       type_items(callback) {
-        Item.find({ genre: req.params.id }).exec(callback);
+        Item.find({ type: req.params.id }).exec(callback);
       },
     },
     (err, results) => {
@@ -37,8 +37,7 @@ exports.type_detail = (req, res) => {
         return next(err);
       }
       res.render("type_detail", {
-        title: "Type Detail",
-        type: results.type,
+        type: results.type,  
         type_items: results.type_items,
       });
     }
@@ -50,7 +49,7 @@ exports.type_create_get = (req, res) => {
 }
 
 exports.type_create_post = [
-  body("type", "Type name required").trim().isLength({ min: 1 }).escape(),
+  body("name", "Type name required").trim().isLength({ min: 1 }).escape(),
   body("description", "Description required").trim().isLength({ min: 1 }).escape(),
 
   (req, res, next) => {
@@ -77,3 +76,64 @@ exports.type_create_post = [
     });
   },
 ];
+
+exports.type_delete_get = (req, res, next) => {
+  async.parallel(
+    {
+      type(callback) {
+        Type.findById(req.params.id).exec(callback);
+      },
+      types_items(callback) {
+        Item.find({ type: req.params.id }).exec(callback);
+      },
+    },
+    (err, results) => {
+      if (err) {
+        return next(err);
+      }
+      if (results.type === null) {
+        res.redirect("/catalog/types");
+      }
+      res.render("type_delete", {
+        title: "Delete item",
+        type: results.type,
+        type_items: results.types_items,
+      });
+    }
+  );
+};
+
+exports.type_delete_post = (req, res, next) => {
+  async.parallel(
+    {
+      type(callback) {
+        Type.findById(req.body.typeid).exec(callback);
+      },
+      types_items(callback) {
+        Item.find({ type: req.body.typeid }).exec(callback);
+      },
+    },
+    (err, results) => {
+      if (err) {
+        return next(err);
+      }
+
+      if (results.types_items.length > 0) {
+        res.render("type_delete", {
+          title: "Delete type",
+          type: results.type,
+          type_items: results.types_items,
+        });
+        return;
+      }
+
+      Type.findByIdAndRemove(req.body.typeid, (err) => {
+        if (err) {
+          return next(err);
+        }
+
+        res.redirect("/catalog/type");
+      })
+    }
+  );
+};

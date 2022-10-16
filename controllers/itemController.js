@@ -312,9 +312,33 @@ exports.item_update_post = [
 ];
 
 exports.item_search_get = (req, res, next) => {
-  res.send("NOT IMPLEMENTED: Item search GET");
+  res.render("search_form", {
+    title: "Search",
+  });
 };
 
-exports.item_search_post = (req, res, next) => {
-  res.send("NOT IMPLEMENTED: Item search POST");
-};
+exports.item_search_post = [
+  body("query")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  (req, res, next) => {
+    async.parallel(
+      {
+        items_list(callback) {
+          Item.find({name: req.body.query}).exec(callback);
+        },
+      },
+      (err, results) => {
+        if (err) {
+          return next(err);
+        }
+
+        res.render("item_list", {
+          title: "Search: " + req.body.query,
+          item_list: results.items_list,
+        });
+      }
+    )
+  }
+];

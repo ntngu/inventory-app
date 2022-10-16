@@ -1,0 +1,9 @@
+extends layout 
+
+block content
+  h1=title
+  form(method="POST" action="")
+    div.form-group
+      label(for="query")
+      input#query.form-control(type="text" placeholder="Chips" name="query" value="")
+    button.btn.btn-primary(type="submit") Search

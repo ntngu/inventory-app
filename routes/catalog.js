@@ -17,6 +17,7 @@ router.get("/item/:id", item_controller.item_detail);
 router.get("/type/:id", type_controller.type_detail);
 
 router.get("/search", item_controller.item_search_get);
+router.post("/search", item_controller.item_search_post);
 
 router.get("/type/:id/delete", type_controller.type_delete_get);
 router.post("/type/:id/delete", type_controller.type_delete_post);
